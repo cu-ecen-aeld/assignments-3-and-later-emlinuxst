@@ -11,7 +11,7 @@ KERNEL_VERSION=v5.15.163
 BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
-CROSS_COMPILE=aarch64-linux-gnu-
+CROSS_COMPILE=aarch64-none-linux-gnu-
 
 if [ $# -lt 1 ]
 then
@@ -76,7 +76,9 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
-cp -a /usr/aarch64-linux-gnu/lib/*.so* ${OUTDIR}/rootfs/lib/
+SYSROOT=$(${CROSS_COMPILE}gcc -print-sysroot)
+cp -a ${SYSROOT}/lib/*.so* ${OUTDIR}/rootfs/lib/ || true
+cp -a ${SYSROOT}/lib64/*.so* ${OUTDIR}/rootfs/lib64/ || true
 # TODO: Make device nodes
 sudo mknod -m 666 ${OUTDIR}/rootfs/dev/null c 1 3
 sudo mknod -m 600 ${OUTDIR}/rootfs/dev/console c 5 1
