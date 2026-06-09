@@ -99,7 +99,7 @@ static int handle_client(int client_fd)
         packet_size += received;
 
         if (memchr(buffer, '\n', received) != NULL) {
-            int fd = open(DATA_FILE, O_WRONLY);
+            int fd = open(DATA_FILE, O_WRONLY | O_APPEND);
             if (fd < 0) {
                 syslog(LOG_ERR, "open write failed: %s", strerror(errno));
                 free(packet);
