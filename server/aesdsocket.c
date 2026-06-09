@@ -14,7 +14,9 @@
 #include <unistd.h>
 
 #define PORT 9000
+#ifndef USE_AESD_CHAR_DEVICE
 #define USE_AESD_CHAR_DEVICE 1
+#endif
 
 #if USE_AESD_CHAR_DEVICE
 #define DATA_FILE "/dev/aesdchar"
@@ -142,7 +144,9 @@ static void daemonize(void)
         exit(EXIT_FAILURE);
     }
 
-    chdir("/");
+    if (chdir("/") != 0) {
+        exit(EXIT_FAILURE);
+    }
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
