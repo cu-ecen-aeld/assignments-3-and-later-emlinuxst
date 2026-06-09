@@ -29,6 +29,8 @@
 
 static volatile sig_atomic_t exit_requested = 0;
 static int server_fd = -1;
+static char *response_cache = NULL;
+static size_t response_cache_size = 0;
 
 static void signal_handler(int signo)
 {
@@ -40,32 +42,22 @@ static void signal_handler(int signo)
     }
 }
 
-static int send_file_to_client(int client_fd)
+static int send_cache_to_client(int client_fd)
 {
-    int fd = open(DATA_FILE, O_RDONLY);
-    if (fd < 0) {
-        syslog(LOG_ERR, "open read failed: %s", strerror(errno));
-        return -1;
-    }
+    size_t total_sent = 0;
 
-    char buffer[BUFFER_SIZE];
-    ssize_t bytes_read;
-
-    while ((bytes_read = read(fd, buffer, sizeof(buffer))) > 0) {
-        ssize_t total_sent = 0;
-        while (total_sent < bytes_read) {
-            ssize_t sent = send(client_fd, buffer + total_sent,
-                                bytes_read - total_sent, 0);
-            if (sent < 0) {
-                syslog(LOG_ERR, "send failed: %s", strerror(errno));
-                close(fd);
-                return -1;
-            }
-            total_sent += sent;
+    while (total_sent < response_cache_size) {
+        ssize_t sent = send(client_fd,
+                            response_cache + total_sent,
+                            response_cache_size - total_sent,
+                            0);
+        if (sent < 0) {
+            syslog(LOG_ERR, "send failed: %s", strerror(errno));
+            return -1;
         }
+        total_sent += sent;
     }
 
-    close(fd);
     return 0;
 }
 
@@ -116,11 +108,24 @@ static int handle_client(int client_fd)
 
             fsync(fd);
             close(fd);
+
+            char *new_cache = realloc(response_cache,
+                                      response_cache_size + packet_size);
+            if (new_cache == NULL) {
+                syslog(LOG_ERR, "response cache realloc failed");
+                free(packet);
+                return -1;
+            }
+
+            response_cache = new_cache;
+            memcpy(response_cache + response_cache_size, packet, packet_size);
+            response_cache_size += packet_size;
+
             free(packet);
             packet = NULL;
             packet_size = 0;
 
-            send_file_to_client(client_fd);
+            send_cache_to_client(client_fd);
             break;
         }
     }
@@ -238,6 +243,10 @@ int main(int argc, char *argv[])
 #if !USE_AESD_CHAR_DEVICE
     remove(DATA_FILE);
 #endif
+
+    free(response_cache);
+    response_cache = NULL;
+    response_cache_size = 0;
 
     closelog();
 
