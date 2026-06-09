@@ -126,6 +126,7 @@ static int handle_client(int client_fd)
             packet_size = 0;
 
             send_cache_to_client(client_fd);
+            shutdown(client_fd, SHUT_WR);
             break;
         }
     }
