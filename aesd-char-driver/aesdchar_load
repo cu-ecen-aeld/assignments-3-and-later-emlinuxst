@@ -26,5 +26,7 @@ chmod $mode  /dev/${device}
 
 # Restart aesdsocket after aesdchar reload when running on target
 if [ -x /etc/init.d/S99aesdsocket ]; then
-    /etc/init.d/S99aesdsocket restart
+    /etc/init.d/S99aesdsocket stop || true
+    sleep 1
+    /etc/init.d/S99aesdsocket start || true
 fi
