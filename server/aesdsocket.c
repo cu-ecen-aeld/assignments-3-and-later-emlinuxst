@@ -114,6 +114,7 @@ static int handle_client(int client_fd)
                 return -1;
             }
 
+            fsync(fd);
             close(fd);
             free(packet);
             packet = NULL;
