@@ -48,6 +48,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     size_t entry_offset;
     size_t bytes_available;
     size_t bytes_to_copy;
+    size_t total_copied = 0;
     ssize_t retval = 0;
 
     PDEBUG("read %zu bytes with offset %lld", count, *f_pos);
@@ -56,27 +57,32 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         return -ERESTARTSYS;
     }
 
-    entry = aesd_circular_buffer_find_entry_offset_for_fpos(
-        &dev->buffer,
-        *f_pos,
-        &entry_offset
-    );
+    while (total_copied < count) {
+        entry = aesd_circular_buffer_find_entry_offset_for_fpos(
+            &dev->buffer,
+            *f_pos,
+            &entry_offset
+        );
 
-    if (!entry) {
-        retval = 0;
-        goto out;
+        if (!entry) {
+            break;
+        }
+
+        bytes_available = entry->size - entry_offset;
+        bytes_to_copy = min(count - total_copied, bytes_available);
+
+        if (copy_to_user(buf + total_copied,
+                         entry->buffptr + entry_offset,
+                         bytes_to_copy)) {
+            retval = -EFAULT;
+            goto out;
+        }
+
+        *f_pos += bytes_to_copy;
+        total_copied += bytes_to_copy;
     }
 
-    bytes_available = entry->size - entry_offset;
-    bytes_to_copy = min(count, bytes_available);
-
-    if (copy_to_user(buf, entry->buffptr + entry_offset, bytes_to_copy)) {
-        retval = -EFAULT;
-        goto out;
-    }
-
-    *f_pos += bytes_to_copy;
-    retval = bytes_to_copy;
+    retval = total_copied;
 
 out:
     mutex_unlock(&dev->lock);
