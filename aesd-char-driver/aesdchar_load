@@ -23,3 +23,8 @@ rm -f /dev/${device}
 mknod /dev/${device} c $major 0
 chgrp $group /dev/${device}
 chmod $mode  /dev/${device}
+
+# Restart aesdsocket after aesdchar reload when running on target
+if [ -x /etc/init.d/S99aesdsocket ]; then
+    /etc/init.d/S99aesdsocket restart
+fi
