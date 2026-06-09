@@ -89,7 +89,7 @@ static int handle_client(int client_fd)
         packet_size += received;
 
         if (memchr(buffer, '\n', received) != NULL) {
-            int fd = open(DATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
+            int fd = open(DATA_FILE, O_WRONLY);
             if (fd < 0) {
                 syslog(LOG_ERR, "open append failed: %s", strerror(errno));
                 free(packet);
